@@ -1,0 +1,602 @@
+---
+title: "CARPS Reproducibility Report"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+# Report Details
+
+```{r}
+articleID <- "2-10-2014 PS" # insert the article ID code here e.g., "10-3-2015_PS"
+reportType <- "final" # specify whether this is the 'pilot' report or 'final' report
+pilotNames <- "Manuel Bohn" # insert the pilot's name here e.g., "Tom Hardwicke".  If there are multiple cpilots enter both names in a character string e.g., "Tom Hardwicke, Bob Dylan"
+copilotNames <- "Tom Hardwicke" # # insert the co-pilot's name here e.g., "Michael Frank". If there are multiple co-pilots enter both names in a character string e.g., "Tom Hardwicke, Bob Dylan"
+pilotTTC <- 180 # insert the pilot's estimated time to complete (in minutes, fine to approximate) e.g., 120
+copilotTTC <- 30 # insert the co-pilot's estimated time to complete (in minutes, fine to approximate) e.g., 120
+pilotStartDate <- as.Date("08/27/18", format = "%m/%d/%y") # insert the pilot's start date in US format e.g., as.Date("01/25/18", format = "%m/%d/%y")
+copilotStartDate <- as.Date("09/06/18", format = "%m/%d/%y") # insert the co-pilot's start date in US format e.g., as.Date("01/25/18", format = "%m/%d/%y")
+completionDate <- as.Date("09/06/18", format = "%m/%d/%y") # copilot insert the date of final report completion (after any necessary rounds of author assistance) in US format e.g., as.Date("01/25/18", format = "%m/%d/%y")
+```
+
+------
+
+#### Methods summary: 
+
+Participants were asked to note down several facts and experiences (e.g. social events, recent conversation, etc.). For each item they were asked how curious they think they will be to find out what they noted down if they were asked again in a couple of month time. Results show that participants underestimated their future curiosity, that is curiosity ratings were higher than predicted when they were asked again before actually revealing what they noted down. 
+
+------
+
+#### Target outcomes: 
+
+> Table 1 provides descriptive statistics for each measure
+for Study 1.
+
+> Participants' Time 1 predictions of
+their curiosity (M = 3.99, SD = 1.32) were lower than their actual curiosity ratings at Time 2, immediately before reading their responses (M = 4.34, SD = 1.25), t(105) = 2.88,
+p = .005, d = 0.27. Participants also underestimated how
+interesting they would find their responses. Predictions of
+interest at Time 1 (M = 3.54, SD = 1.01) were lower than
+ratings of actual interest experienced at Time 2 (M = 3.82,
+SD = 0.89), t(105) = 3.10, p = .003, d = 0.29.
+
+------
+
+
+```{r global_options, include=FALSE}
+# sets up some formatting options for the R Markdown document
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+# Step 1: Load packages and prepare report object
+
+```{r}
+# load packages
+library(tidyverse) # for data munging
+library(knitr) # for kable table formating
+library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
+library(readxl) # import excel files
+library(CARPSreports) # custom report functions
+library(lsr) # calculate effect sizes
+```
+
+```{r}
+# Prepare report object. This will be updated automatically by the reproCheck function each time values are compared
+reportObject <- data.frame(dummyRow = TRUE, reportedValue = NA, obtainedValue = NA, valueType = NA, percentageError = NA, comparisonOutcome = NA, eyeballCheck = NA)
+```
+
+# Step 2: Load data
+
+```{r}
+raw_data <- read_sav("data/Study1_Data.sav")
+```
+
+# Step 3: Tidy data and preprocessing
+
+```{r}
+tidy_data <- raw_data %>%
+  mutate(Interesting_diff = T2_Interesting - T1_Interesting,
+         Meaningful_diff = T2_Meaningful - T1_Meaningful,
+         Surprised_diff = T2_Surprised - T1_Surprised)%>%
+  gather(measure, score, -Gender, -Year_born, - Order, - T2_Finished)%>%
+  filter(T2_Finished == 1)
+```
+
+# Step 4: Run analysis
+
+## Descriptive statistics
+
+```{r}
+# Filtering relevant conditions and changing data structure to get values reported in table 1
+
+t1_data <- tidy_data %>%
+  filter(measure == "T2_Interesting" | measure == "T1_Interesting" |measure == "T1_Curious" | measure == "T1_Surprised" | measure == "T1_Meaningful" | measure == "T1_Interest_Composite" | measure == "Interest_composite_diff" | measure == "Curious_diff" | measure == "T2_Curious" | measure == "T2_Surprised" | measure == "T2_Meaningful" | measure == "T2_Interest_Composite"| measure ==  "Interesting_diff" | measure ==  "Surprised_diff" | measure ==  "Meaningful_diff")%>%
+  mutate(time = ifelse(grepl("T1",measure),"Time 1", ifelse(grepl( "T2",measure), "Time 2", "Underestimate")),
+         measure = ifelse(time == "Underestimate",measure, substr(measure,4, length(measure))),
+         measure = ifelse(measure == "Curious_diff", "Curious", measure),
+         measure = ifelse(measure == "Surprised_diff", "Surprised", measure),
+         measure = ifelse(measure == "Interesting_diff", "Interesting", measure),
+         measure = ifelse(measure == "Meaningful_diff", "Meaningful", measure),
+         measure = ifelse(measure == "Interest_composite_diff", "Interest_Composite", measure))
+```
+
+Below we check each descriptive value for study 1 shown in table 1. Here is the table.
+
+![Table 1](table1.png)
+
+The manuscript does not specify the way that confidence intervals were computed. Given the large sample size, I assumed they used a normal distribution as the basis. Given that all the values match, this is probably what they did.
+
+```{r}
+# Curiosity
+
+## Time 1
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.99", obtainedValue =  mean(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)), valueType = "mean")
+
+### sd
+reportObject <- reproCheck(reportedValue = "1.32", obtainedValue =  sd(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)), valueType = "sd")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.74", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.24", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Time 2
+
+### mean
+reportObject <- reproCheck(reportedValue = "4.34", obtainedValue =  mean(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)), valueType = "mean")
+
+### sd
+reportObject <- reproCheck(reportedValue = "1.32", obtainedValue =  sd(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)), valueType = "sd")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "4.10", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.58", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Diff
+
+### mean
+reportObject <- reproCheck(reportedValue = "0.35", obtainedValue =  mean(t1_data%>%filter(time == "Underestimate", measure == "Curious")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "0.11", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Curious")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "0.59", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Curious")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Curious")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+
+
+# Interest Composite
+
+## Time 1
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.54", obtainedValue =  mean(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)), valueType = "mean")
+
+### sd
+reportObject <- reproCheck(reportedValue = "1.01", obtainedValue =  sd(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)), valueType = "sd")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.34", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "3.73", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Time 2
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.82", obtainedValue =  mean(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)), valueType = "mean")
+
+### sd
+reportObject <- reproCheck(reportedValue = "0.89", obtainedValue =  sd(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)), valueType = "sd")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.65", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.00", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+
+## Diff
+
+### mean
+reportObject <- reproCheck(reportedValue = "0.29", obtainedValue =  mean(t1_data%>%filter(time == "Underestimate", measure == "Interest_Composite")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "0.10", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Interest_Composite")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "0.47", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Interest_Composite")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Interest_Composite")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+# Surprise
+
+## Time 1
+
+### mean
+reportObject <- reproCheck(reportedValue = "2.84", obtainedValue =  mean(t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "2.64", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "3.05", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+
+## Time 2
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.25", obtainedValue =  mean(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.06", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "3.44", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Diff
+
+### mean
+reportObject <- reproCheck(reportedValue = "0.40", obtainedValue =  mean(t1_data%>%filter(time == "Underestimate", measure == "Surprised")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "0.19", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Surprised")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "0.62", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Surprised")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Surprised")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+# Meaningfulness
+
+## Time 1
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.81", obtainedValue =  mean(t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.60", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.03", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Time 2
+
+### mean
+reportObject <- reproCheck(reportedValue = "4.04", obtainedValue =  mean(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.84", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.23", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Diff
+
+### mean
+reportObject <- reproCheck(reportedValue = "0.22", obtainedValue =  mean(t1_data%>%filter(time == "Underestimate", measure == "Meaningful")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "0.03", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Meaningful")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "0.42", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Meaningful")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Meaningful")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+
+# Interest
+
+## Time 1
+
+### mean
+reportObject <- reproCheck(reportedValue = "3.95", obtainedValue =  mean(t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "3.73", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.18", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+## Time 2
+
+### mean
+reportObject <- reproCheck(reportedValue = "4.19", obtainedValue =  mean(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "4.00", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "4.38", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+
+## Diff
+
+### mean
+reportObject <- reproCheck(reportedValue = "0.23", obtainedValue =  mean(t1_data%>%filter(time == "Underestimate", measure == "Interesting")%>%pull(score)), valueType = "mean")
+
+### ci 
+
+#### lower
+reportObject <- reproCheck(reportedValue = "0.02", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Interesting")%>%pull(score)) -
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+
+#### upper
+reportObject <- reproCheck(reportedValue = "0.45", obtainedValue =  
+                             mean(t1_data%>%filter(time == "Underestimate", measure == "Interesting")%>%pull(score)) +
+                             qnorm(0.975)*sd(t1_data%>%filter(time == "Underestimate", measure == "Interesting")%>%pull(score)) /
+                             sqrt(length(unique(t1_data$Order))),
+                           valueType = "ci")
+```
+
+## Inferential statistics
+
+> Across the nine prompts, participants’ ratings of their curiosity and interest were highly intercorrelated (αcuriosity = .93, αinterest = .90). We therefore present results collapsed across the prompts. Participants’ Time 1 predictions of their curiosity (M = 3.99, SD = 1.32) were lower than their actual curiosity ratings at Time 2, immediately before read- ing their responses (M = 4.34, SD = 1.25), t(105) = 2.88, p = .005, d = 0.27. Participants also underestimated how interesting they would find their responses. Predictions of interest at Time 1 (M = 3.54, SD = 1.01) were lower than ratings of actual interest experienced at Time 2 (M = 3.82, SD = 0.89), t(105) = 3.10, p = .003, d = 0.29.
+
+```{r}
+# Curiosity
+t_cur <- t.test(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score), paired = T)
+
+d_cur <-cohensD(t1_data%>%filter(time == "Time 2", measure == "Curious")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Curious")%>%pull(score))
+
+# Interest composite score
+t_int_comp <- t.test(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score), paired = T)
+
+d_int_comp <-cohensD(t1_data%>%filter(time == "Time 2", measure == "Interest_Composite")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Interest_Composite")%>%pull(score))
+
+## P-values reported in table 1
+
+### Interest Surprised
+t_surp <- t.test(t1_data%>%filter(time == "Time 2", measure == "Surprised")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Surprised")%>%pull(score), paired = T)
+
+### Interest Meaningfulness
+t_mean <- t.test(t1_data%>%filter(time == "Time 2", measure == "Meaningful")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Meaningful")%>%pull(score), paired = T)
+
+### Interest Interesting
+t_int <- t.test(t1_data%>%filter(time == "Time 2", measure == "Interesting")%>%pull(score),t1_data%>%filter(time == "Time 1", measure == "Interesting")%>%pull(score), paired = T)
+
+```
+
+
+```{r}
+# Curiosity
+
+## df
+reportObject <- reproCheck(reportedValue = "105", obtainedValue =  t_cur$parameter, valueType = "df")
+
+## t
+reportObject <- reproCheck(reportedValue = "2.88", obtainedValue =  t_cur$statistic, valueType = "t")
+
+## p
+reportObject <- reproCheck(reportedValue = ".005", obtainedValue =  t_cur$p.value, valueType = "p")
+
+## d
+reportObject <- reproCheck(reportedValue = "0.27", obtainedValue =  d_cur, valueType = "d")
+
+# Interest
+
+## df
+reportObject <- reproCheck(reportedValue = "105", obtainedValue =  t_int_comp$parameter, valueType = "df")
+
+## t
+reportObject <- reproCheck(reportedValue = "3.10", obtainedValue =  t_int_comp$statistic, valueType = "t")
+
+## p
+reportObject <- reproCheck(reportedValue = ".003", obtainedValue =  t_int_comp$p.value, valueType = "p")
+
+## d
+reportObject <- reproCheck(reportedValue = "0.29", obtainedValue =  d_int_comp, valueType = "d")
+
+# Surprise
+
+## p
+reportObject <- reproCheck(reportedValue = "<.001", obtainedValue =  t_surp$p.value, valueType = "p",eyeballCheck = TRUE)
+
+# Interest Surprised
+
+## p
+reportObject <- reproCheck(reportedValue = "<.001", obtainedValue =  t_surp$p.value, valueType = "p",eyeballCheck = TRUE)
+
+# Interest Meaningfulness
+
+## p
+reportObject <- reproCheck(reportedValue = ".02", obtainedValue =  t_mean$p.value, valueType = "p")
+
+# Interest Interesting
+
+## p
+reportObject <- reproCheck(reportedValue = ".03", obtainedValue =  t_int$p.value, valueType = "p")
+```
+
+
+# Step 5: Conclusion
+
+There were eight minor errors, otherwise all values matched. Seven of the minor errors are probably due to rounding. The only substantial difference between reported and obtained values was found for the SD for curiosity ratings at Time 2. Where this error comes from is unclear. In sum, this was a success. 
+
+```{r}
+Author_Assistance = FALSE # was author assistance provided? (if so, enter TRUE)
+
+Insufficient_Information_Errors <- 0 # how many discrete insufficient information issues did you encounter?
+
+# Assess the causal locus (discrete reproducibility issues) of any reproducibility errors. Note that there doesn't necessarily have to be a one-to-one correspondance between discrete reproducibility issues and reproducibility errors. For example, it could be that the original article neglects to mention that a Greenhouse-Geisser correct was applied to ANOVA outcomes. This might result in multiple reproducibility errors, but there is a single causal locus (discrete reproducibility issue).
+
+locus_typo <- 0 # how many discrete issues did you encounter that related to typographical errors?
+locus_specification <- 0 # how many discrete issues did you encounter that related to incomplete, incorrect, or unclear specification of the original analyses?
+locus_analysis <- 0 # how many discrete issues did you encounter that related to errors in the authors' original analyses?
+locus_data <- 0 # how many discrete issues did you encounter that related to errors in the data files shared by the authors?
+locus_unidentified <- 0 # how many discrete issues were there for which you could not identify the cause
+
+# How many of the above issues were resolved through author assistance?
+locus_typo_resolved <- NA # how many discrete issues did you encounter that related to typographical errors?
+locus_specification_resolved <- NA # how many discrete issues did you encounter that related to incomplete, incorrect, or unclear specification of the original analyses?
+locus_analysis_resolved <- NA # how many discrete issues did you encounter that related to errors in the authors' original analyses?
+locus_data_resolved <- NA # how many discrete issues did you encounter that related to errors in the data files shared by the authors?
+locus_unidentified_resolved <- NA # how many discrete issues were there for which you could not identify the cause
+
+Affects_Conclusion <- NA # Do any reproducibility issues encounter appear to affect the conclusions made in the original article? TRUE, FALSE, or NA. This is a subjective judgement, but you should taking into account multiple factors, such as the presence/absence of decision errors, the number of target outcomes that could not be reproduced, the type of outcomes that could or could not be reproduced, the difference in magnitude of effect sizes, and the predictions of the specific hypothesis under scrutiny.
+```
+
+```{r}
+reportObject <- reportObject %>%
+  filter(dummyRow == FALSE) %>% # remove the dummy row
+  select(-dummyRow) %>% # remove dummy row designation
+  mutate(articleID = articleID) %>% # add variables to report 
+  select(articleID, everything()) # make articleID first column
+
+# decide on final outcome
+if(any(reportObject$comparisonOutcome %in% c("MAJOR_ERROR", "DECISION_ERROR")) | Insufficient_Information_Errors > 0){
+  finalOutcome <- "Failure without author assistance"
+  if(Author_Assistance == T){
+    finalOutcome <- "Failure despite author assistance"
+  }
+}else{
+  finalOutcome <- "Success without author assistance"
+  if(Author_Assistance == T){
+    finalOutcome <- "Success with author assistance"
+  }
+}
+
+# collate report extra details
+reportExtras <- data.frame(articleID, pilotNames, copilotNames, pilotTTC, copilotTTC, pilotStartDate, copilotStartDate, completionDate, Author_Assistance, finalOutcome, Insufficient_Information_Errors, locus_typo, locus_specification, locus_analysis, locus_data, locus_unidentified, locus_typo_resolved, locus_specification_resolved, locus_analysis_resolved, locus_data_resolved, locus_unidentified_resolved)
+
+# save report objects
+if(reportType == "pilot"){
+  write_csv(reportObject, "pilotReportDetailed.csv")
+  write_csv(reportExtras, "pilotReportExtras.csv")
+}
+
+if(reportType == "final"){
+  write_csv(reportObject, "finalReportDetailed.csv")
+  write_csv(reportExtras, "finalReportExtras.csv")
+}
+```
+
+# Session information
+
+```{r session_info, include=TRUE, echo=TRUE, results='markup'}
+devtools::session_info()
+```
