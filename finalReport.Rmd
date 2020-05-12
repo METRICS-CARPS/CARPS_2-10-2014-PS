@@ -535,7 +535,7 @@ reportObject <- reproCheck(reportedValue = ".03", obtainedValue =  t_int$p.value
 
 # Step 5: Conclusion
 
-There were eight minor errors, otherwise all values matched. Seven of the minor errors are probably due to rounding. The only substantial difference between reported and obtained values was found for the SD for curiosity ratings at Time 2. Where this error comes from is unclear. In sum, this was a success. 
+The manuscript does not specify the way that confidence intervals were computed and it was necessary to make an educated guess. All target outcomes were reproduced successfully.
 
 ```{r}
 Author_Assistance = FALSE # was author assistance provided? (if so, enter TRUE)
